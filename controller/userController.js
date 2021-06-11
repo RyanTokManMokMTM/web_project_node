@@ -2,6 +2,7 @@ const sqlClient = require("../dbConnection").db
 const { validationResult } = require('express-validator')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
+const { promisify } = require('util')
 sqlClient.getConnection((err, result) => {
 
 })
@@ -35,11 +36,11 @@ exports.postUserLogin = (req, res, next) => {
                                     //password is correct
                                     const JWTData = {
                                         user_id: sqlResult[0].UID,
-                                        firstName: sqlResult[0].firstName,
-                                        lastName: sqlResult[0].lastName,
-                                        email: sqlResult[0].email
+                                        firstName: sqlResult[0].FirstName,
+                                        lastName: sqlResult[0].LastName,
+                                        email: sqlResult[0].Email
                                     }
-
+                                    console.log(JWTData)
                                     const user_jwt = jwt.sign(JWTData, process.env.JWT_KEY, {
                                         expiresIn: "30m"
                                     })
@@ -49,6 +50,8 @@ exports.postUserLogin = (req, res, next) => {
                                     }
                                     response_message.success = true
                                     response_message.message = "user logined in"
+                                        //   res.header('Access-Control-Allow-Credentials', true)
+                                    res.header('set-cookie', 1)
                                     res.cookie("auth", user_jwt, cookie_option)
                                     res.json(response_message)
 
@@ -120,4 +123,52 @@ exports.postUserLogOut = (req, res, next) => {
     }
 
     res.json(response_message)
+}
+
+exports.checkAuth = (req, res, next) => {
+    //check authorization
+    let response_message = {
+        auth: false,
+        message: ""
+    }
+    const JWT = req.cookies.auth
+    if (JWT != undefined) {
+        try {
+            const Jwt_verify_promise = promisify(jwt.verify)
+            Jwt_verify_promise(JWT, process.env.JWT_KEY)
+                .then(result => {
+                    response_message.auth = true
+                    response_message.message = "successed"
+                    console.log(result)
+                    const user_info = {
+                        id: result.user_id,
+                        firstName: result.firstName,
+                        lastName: result.lastName,
+                        email: result.email
+                    }
+                    response_message.info = user_info
+                    console.log(response_message)
+                    res.json(response_message)
+                })
+                .catch(err => {
+                    console.log(err)
+                        // console.log("test")
+                        //send auth failed
+                    response_message.auth = false
+                    response_message.message = "JWT invaild"
+                    res.json(response_message)
+
+                })
+        } catch (err) {
+            response_message.auth = false
+            response_message.message = "unkown error"
+            res.json(response_message)
+        }
+
+    } else {
+        response_message.auth = false
+        response_message.message = "JWT not exist"
+        res.json(response_message)
+    }
+
 }

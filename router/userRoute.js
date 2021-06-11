@@ -71,4 +71,15 @@ route.post("/signup", [check('email')
 ], controller.postUserSignUp)
 route.post("/signout", controller.postUserLogOut)
 
+route.post("/checkAuth", controller.checkAuth)
+
+route.post("/logout", (req, res, next) => {
+
+    res.clearCookie("auth")
+    res.json({
+        success: true,
+        message: "user is logout"
+    })
+})
+
 module.exports = route
